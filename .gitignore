@@ -1,0 +1,12 @@
+.idea
+.gradle
+.terraform
+.terraform.lock.hcl
+.terraform.tfstate.lock.info
+build
+node_modules
+gradle.properties
+terraform.output.json
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars.json

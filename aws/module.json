@@ -1,0 +1,8 @@
+{
+    "namespace": "@MODULE_NAMESPACE@",
+    "name": "@MODULE_NAME@",
+    "provider": "aws",
+    "version": "@MODULE_VERSION@",
+    "displayName": "FFmpeg Service",
+    "description": "Service that leverages FFmpeg to do transformations on media files"
+}

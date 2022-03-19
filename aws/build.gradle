@@ -1,0 +1,82 @@
+apply from: "${project.rootDir}/gradle-tasks-for-module.gradle"
+
+task copyApiHandler(type: Copy) {
+    dependsOn "api-handler:build"
+    from file("api-handler/build/dist/lambda.zip")
+    into "build/staging/lambdas"
+    rename { "api-handler.zip" }
+}
+
+task copyWorker(type: Copy) {
+    dependsOn "worker:build"
+    from file("worker/build/dist/lambda.zip")
+    into "build/staging/lambdas"
+    rename { "worker.zip" }
+}
+
+def ffmpegTarXzFile = file("build/ffmpeg.tar.xz")
+def ffmpegTarFile = file("build/ffmpeg.tar")
+def ffmpegFolder = file("build/ffmpeg")
+
+task downloadFFmpeg(type: Download) {
+    sourceUrl = "https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.4.1-amd64-static.tar.xz"
+    target = ffmpegTarXzFile
+}
+
+class Download extends DefaultTask {
+    @Input
+    String sourceUrl
+
+    @OutputFile
+    File target
+
+    @TaskAction
+    void download() {
+        ant.get(src: sourceUrl, dest: target)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    antCompress
+}
+dependencies {
+    antCompress 'org.apache.ant:ant-compress:1.5'
+}
+
+task uncompressFFmpegTarXz {
+    dependsOn downloadFFmpeg
+
+    inputs.file ffmpegTarXzFile
+    outputs.dir ffmpegFolder
+    doLast {
+        delete ffmpegFolder
+        ant.taskdef(
+                resource: "org/apache/ant/compress/antlib.xml",
+                classpath: configurations.antCompress.asPath
+        )
+        ant.unxz(src: ffmpegTarXzFile.absolutePath, dest: ffmpegTarFile)
+        copy {
+            from tarTree(ffmpegTarFile)
+            into ffmpegFolder
+        }
+    }
+}
+
+task createFFmpegLayer(type: Zip) {
+    dependsOn uncompressFFmpegTarXz
+    from "$ffmpegFolder/ffmpeg-4.4.1-amd64-static"
+    include "ffmpeg"
+    archiveFileName = "ffmpeg.zip"
+    destinationDirectory = file("build/staging/layers")
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+
+build.dependsOn copyApiHandler
+build.dependsOn copyWorker
+build.dependsOn createFFmpegLayer

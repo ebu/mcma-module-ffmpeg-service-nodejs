@@ -1,0 +1,105 @@
+import groovy.json.JsonOutput
+
+task generateTerraformTFVars {
+    inputs.property("environment_name", environmentName)
+    inputs.property("environment_type", environmentType)
+    inputs.property("aws_profile", awsProfile)
+    inputs.property("aws_region", awsRegion)
+
+    def propertyFile = file("${projectDir}/terraform.tfvars.json")
+    outputs.file(propertyFile)
+
+    doLast {
+        def data = [
+                environment_name: environmentName,
+                environment_type: environmentType,
+                global_prefix   : environmentName,
+
+                aws_profile     : awsProfile,
+                aws_region      : awsRegion,
+        ]
+
+        def json = JsonOutput.toJson(data)
+        def jsonPretty = JsonOutput.prettyPrint(json)
+
+        propertyFile.write(jsonPretty)
+    }
+}
+
+task terraformInit(type: Exec) {
+    dependsOn ":verifyTerraform"
+    inputs.file "main.tf"
+    inputs.file "versions.tf"
+    outputs.upToDateWhen { file(".terraform").exists() }
+    commandLine terraformExecutable
+    args "init"
+    environment "AWS_PROFILE", awsProfile
+}
+
+task terraformInitUpgrade(type: Exec) {
+    dependsOn ":verifyTerraform"
+    inputs.file "main.tf"
+    inputs.file "versions.tf"
+    outputs.upToDateWhen { file(".terraform").exists() }
+    commandLine terraformExecutable
+    args "init", "-upgrade"
+    environment "AWS_PROFILE", awsProfile
+}
+
+task terraformPlan(type: Exec) {
+    dependsOn ":verifyTerraform"
+    dependsOn ":build"
+    dependsOn terraformInit
+    dependsOn generateTerraformTFVars
+    commandLine terraformExecutable
+    args "plan"
+}
+
+task terraformApply(type: Exec) {
+    dependsOn ":verifyTerraform"
+    dependsOn ":build"
+    dependsOn terraformInit
+    dependsOn generateTerraformTFVars
+    commandLine terraformExecutable
+    args "apply", "-auto-approve"
+}
+
+task terraformDestroy(type: Exec) {
+    dependsOn ":verifyTerraform"
+    dependsOn terraformInit
+    dependsOn generateTerraformTFVars
+    commandLine terraformExecutable
+    args "destroy", "-auto-approve"
+}
+
+task terraformOutput(type: Exec) {
+    dependsOn ":verifyTerraform"
+    dependsOn terraformInit
+    mustRunAfter terraformApply
+    inputs.file("terraform.tfstate")
+    inputs.property("environmentType", environmentType)
+    outputs.file("terraform.output.json")
+    commandLine terraformExecutable
+    args "output", "-json"
+    doFirst {
+        standardOutput new FileOutputStream("${projectDir}/terraform.output.json")
+    }
+}
+
+task clean(type: Delete) {
+    delete "${projectDir}/.terraform"
+    delete "${projectDir}/terraform.output.json"
+    delete "${projectDir}/terraform.tfvars.json"
+}
+
+task plan {}
+plan.dependsOn(terraformPlan)
+
+task apply {}
+apply.dependsOn(terraformApply)
+
+task deploy {}
+deploy.dependsOn(apply)
+
+task destroy {}
+destroy.dependsOn(terraformDestroy)
