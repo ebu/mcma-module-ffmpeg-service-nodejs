@@ -2,10 +2,12 @@ import * as fs from "fs";
 import * as AWS from "aws-sdk";
 import { McmaException } from "@mcma/core";
 
-const AWS_CREDENTIALS = "../../deployment/aws-credentials.json";
 const { MODULE_NAMESPACE, MODULE_NAME, MODULE_VERSION, MODULE_REPOSITORY } = process.env;
 
-AWS.config.loadFromPath(AWS_CREDENTIALS);
+const { AwsProfile, AwsRegion } = process.env;
+
+AWS.config.credentials = new AWS.SharedIniFileCredentials({ profile: AwsProfile });
+AWS.config.region = AwsRegion;
 
 const s3 = new AWS.S3();
 
