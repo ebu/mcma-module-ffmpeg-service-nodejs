@@ -2,14 +2,14 @@ import * as ffmpeg from "fluent-ffmpeg";
 import * as stream from "stream";
 import { S3 } from "aws-sdk";
 
-import { McmaException, TransformJob } from "@mcma/core";
+import { McmaException, TransformJob, Utils } from "@mcma/core";
 import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
 import { S3Locator, S3LocatorProperties } from "@mcma/aws-s3";
 
 const { OutputBucket, OutputBucketPrefix } = process.env;
 
 export function generateFilePrefix(url: string) {
-    let filename = new URL(url).pathname;
+    let filename = Utils.parseUrl(url).pathname;
     let pos = filename.lastIndexOf("/");
     if (pos >= 0) {
         filename = filename.substring(pos + 1);
