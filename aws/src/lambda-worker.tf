@@ -10,7 +10,7 @@ locals {
 
 resource "aws_iam_role" "worker" {
   name = format("%.64s", replace("${var.prefix}-${var.aws_region}-worker", "/[^a-zA-Z0-9_]+/", "-" ))
-  path = "/app/"
+  path = var.iam_role_path
 
   assume_role_policy = jsonencode({
     Version   = "2012-10-17"

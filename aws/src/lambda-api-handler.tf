@@ -9,7 +9,7 @@ locals {
 
 resource "aws_iam_role" "api_handler" {
   name = format("%.64s", replace("${var.prefix}-${var.aws_region}-api-handler", "/[^a-zA-Z0-9_]+/", "-" ))
-  path = "/app/"
+  path = var.iam_role_path
 
   assume_role_policy = jsonencode({
     Version   = "2012-10-17"
