@@ -2,14 +2,14 @@ import * as ffmpeg from "fluent-ffmpeg";
 import * as stream from "stream";
 import { S3 } from "aws-sdk";
 
-import { McmaException, TransformJob, Utils } from "@mcma/core";
+import { McmaException, TransformJob } from "@mcma/core";
 import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
 import { S3Locator, S3LocatorProperties } from "@mcma/aws-s3";
 
 const { OutputBucket, OutputBucketPrefix } = process.env;
 
 export function generateFilePrefix(url: string) {
-    let filename = Utils.parseUrl(url).pathname;
+    let filename = decodeURIComponent(new URL(url).pathname);
     let pos = filename.lastIndexOf("/");
     if (pos >= 0) {
         filename = filename.substring(pos + 1);
@@ -25,34 +25,34 @@ export function generateFilePrefix(url: string) {
 async function ffmpegExtractThumbnail(inputFile: S3LocatorProperties, outputFile: S3LocatorProperties, contentType: string, s3: S3) {
     return new Promise<S3.ManagedUpload.SendData>(((resolve, reject) => {
 
-    const writableStream = new stream.PassThrough();
+        const writableStream = new stream.PassThrough();
 
-    s3.upload({
-        Bucket: outputFile.bucket,
-        Key: outputFile.key,
-        Body: writableStream,
-        ContentType: contentType
-    }, function (err: Error, data: S3.ManagedUpload.SendData) {
-        if (err) {
-            return reject(err);
-        }
-        return resolve(data);
-    });
+        s3.upload({
+            Bucket: outputFile.bucket,
+            Key: outputFile.key,
+            Body: writableStream,
+            ContentType: contentType
+        }, function (err: Error, data: S3.ManagedUpload.SendData) {
+            if (err) {
+                return reject(err);
+            }
+            return resolve(data);
+        });
 
-    ffmpeg(inputFile.url)
-        .setFfmpegPath("/opt/ffmpeg")
-        .seekInput(1)
-        .frames(1)
-        .size("320x?")
-        .aspect("16:9")
-        .autopad()
-        .outputFormat("mjpeg")
-        .output(writableStream)
-        .on('error', function(err, stdout, stderr) {
-            reject(err);
-        })
-        .run();
-    }))
+        ffmpeg(inputFile.url)
+            .setFfmpegPath("/opt/ffmpeg")
+            .seekInput(1)
+            .frames(1)
+            .size("320x?")
+            .aspect("16:9")
+            .autopad()
+            .outputFormat("mjpeg")
+            .output(writableStream)
+            .on("error", function (err, stdout, stderr) {
+                reject(err);
+            })
+            .run();
+    }));
 }
 
 export async function extractThumbnail(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3: S3 }) {
