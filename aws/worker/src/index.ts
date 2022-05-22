@@ -7,7 +7,7 @@ import { DynamoDbTableProvider } from "@mcma/aws-dynamodb";
 import { AwsCloudWatchLoggerProvider } from "@mcma/aws-logger";
 import { awsV4Auth } from "@mcma/aws-client";
 import { TransformJob } from "@mcma/core";
-import { extractThumbnail } from "./operations";
+import { extractThumbnail, transcode } from "./operations";
 
 const { LogGroupName } = process.env;
 
@@ -27,7 +27,8 @@ const providerCollection = new ProviderCollection({
 
 const processJobAssignmentOperation =
     new ProcessJobAssignmentOperation(TransformJob)
-        .addProfile("ExtractThumbnail", extractThumbnail);
+        .addProfile("FFmpegExtractThumbnail", extractThumbnail)
+        .addProfile("FFmpegTranscode", transcode);
 
 const worker =
     new Worker(providerCollection)

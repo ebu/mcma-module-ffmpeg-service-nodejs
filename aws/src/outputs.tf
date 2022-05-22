@@ -11,14 +11,35 @@ output "service_definition" {
     job_type     = "TransformJob"
     job_profiles = [
       {
-        name             = "ExtractThumbnail"
+        name             = "FFmpegExtractThumbnail"
         input_parameters = [
           {
             parameter_name = "inputFile"
             parameter_type = "Locator"
           },
         ]
-        optional_input_parameters = []
+        optional_input_parameters = [
+          {
+            parameter_name = "position"
+            parameter_type = "number | string"
+          },
+          {
+            parameter_name = "width"
+            parameter_type = "number"
+          },
+          {
+            parameter_name = "height"
+            parameter_type = "number"
+          },
+          {
+            parameter_name = "aspectRatio"
+            parameter_type = "string | number"
+          },
+          {
+            parameter_name = "autoPadding"
+            parameter_type = "boolean"
+          }
+        ]
         output_parameters         = [
           {
             parameter_name = "outputFile"
@@ -26,6 +47,55 @@ output "service_definition" {
           }
         ]
       },
+      {
+        name             = "FFmpegTranscode"
+        input_parameters = [
+          {
+            parameter_name = "inputFile"
+            parameter_type = "Locator"
+          },
+        ]
+        optional_input_parameters = [
+          {
+            parameter_name = "videoCodec"
+            parameter_type = "string"
+          },
+          {
+            parameter_name = "audioCodec"
+            parameter_type = "string"
+          },
+          {
+            parameter_name = "format"
+            parameter_type = "string"
+          },
+          {
+            parameter_name = "videoBitRate"
+            parameter_type = "number"
+          },
+          {
+            parameter_name = "width"
+            parameter_type = "number"
+          },
+          {
+            parameter_name = "height"
+            parameter_type = "number"
+          },
+          {
+            parameter_name = "aspectRatio"
+            parameter_type = "string | number"
+          },
+          {
+            parameter_name = "autoPadding"
+            parameter_type = "boolean"
+          }
+        ]
+        output_parameters         = [
+          {
+            parameter_name = "outputFile"
+            parameter_type = "S3Locator"
+          }
+        ]
+      }
     ]
   }
 }

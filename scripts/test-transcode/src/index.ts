@@ -3,7 +3,7 @@ import * as path from "path";
 import * as mime from "mime-types";
 
 import * as ffmpeg from "fluent-ffmpeg";
-
+import * as stream from "stream";
 
 import { v4 as uuidv4 } from "uuid";
 import * as AWS from "aws-sdk";
@@ -12,7 +12,6 @@ import { AuthProvider, ResourceManager } from "@mcma/client";
 import { Job, JobParameterBag, JobProfile, JobStatus, McmaException, McmaTracker, TransformJob, Utils } from "@mcma/core";
 import { S3Locator } from "@mcma/aws-s3";
 import { awsV4Auth } from "@mcma/aws-client";
-import * as stream from "stream";
 
 const { AwsProfile, AwsRegion } = process.env;
 
@@ -89,21 +88,25 @@ async function waitForJobCompletion(job: Job, resourceManager: ResourceManager):
 }
 
 async function startJob(resourceManager: ResourceManager, inputFile: S3Locator) {
-    let [jobProfile] = await resourceManager.query(JobProfile, { name: "ExtractThumbnail" });
+    let [jobProfile] = await resourceManager.query(JobProfile, { name: "FFmpegTranscode" });
 
     // if not found bail out
     if (!jobProfile) {
-        throw new McmaException("JobProfile 'ExtractThumbnail' not found");
+        throw new McmaException("JobProfile 'FFmpegTranscode' not found");
     }
 
     let job = new TransformJob({
         jobProfileId: jobProfile.id,
         jobInput: new JobParameterBag({
-            inputFile
+            inputFile,
+            videoBitRate: 500,
+            width: 640,
+            aspectRatio: "4:3",
+            autoPadding: true,
         }),
         tracker: new McmaTracker({
             "id": uuidv4(),
-            "label": "Test - ExtractThumbnail"
+            "label": "Test - FFmpegTranscode"
         })
     });
 
@@ -136,24 +139,66 @@ async function test() {
     const terraformOutput = JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT, "utf8"));
     const uploadBucket = terraformOutput.upload_bucket.value;
 
-    const uploadStream = uploadFromStream(s3, uploadBucket, "test.jpg", "image/jpeg");
+    const uploadStream = uploadFromStream(s3, uploadBucket, "test.mp4", "video/mp4");
+
+    var stream  = fs.createWriteStream('outputfile.mp4');
 
     ffmpeg("C:/Media/2015_GF_ORF_00_18_09_conv.mp4")
-        .setFfmpegPath("C:/Apps/ffmpeg-4.2.4-win64-static/bin/ffmpeg.exe")
-        .seekInput(1)
-        .frames(1)
-        .size("320x?")
-        .aspect("16:9")
-        .autopad()
-        .outputFormat("mjpeg")
-        .output(uploadStream)
+        .audioCodec("aac")
+        .videoCodec("libx264")
+        .size("640x?")
+        .videoBitrate(500)
+        .outputFormat("mp4")
+        .outputOptions("-movflags empty_moov")
+        .output(stream)
         .on("end", function () {
             log("Finished");
+        })
+        .on("error", (err, stdout, stderr) => {
+            console.log('Cannot process video: ' + err.message);
+            console.log("stdout: " + stdout);
+            console.log("stderr: " + stderr);
+        })
+        .on('progress', function(progress) {
+            console.log('Processing: ' + progress.percent + '% done');
         })
         .run();
 }
 
+function capabilities() {
+    ffmpeg.getAvailableFormats(function(err, formats) {
+        console.log('Available formats:');
+        for (const key of Object.keys(formats)) {
+            if (!formats[key].canMux) {
+                delete formats[key];
+            }
+        }
+        console.dir(formats);
+    });
+return;
+    ffmpeg.getAvailableCodecs(function(err, codecs) {
+        console.log('Available codecs:');
+        console.dir(codecs);
+    });
+
+    ffmpeg.getAvailableEncoders(function(err, encoders) {
+        console.log('Available encoders:');
+        console.dir(encoders);
+    });
+
+    ffmpeg.getAvailableFilters(function(err, filters) {
+        console.log("Available filters:");
+        console.dir(filters);
+    });
+}
+
 async function main() {
+    // capabilities();
+    // return;
+
+    // await test();
+    // return;
+
     console.log("Starting test service");
 
     const terraformOutput = JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT, "utf8"));
@@ -171,9 +216,8 @@ async function main() {
 
     const resourceManager = new ResourceManager(resourceManagerConfig, new AuthProvider().add(awsV4Auth(AWS)));
 
-    // console.log(`Uploading media file ${MEDIA_FILE}`);
-    // const mediaFileLocator = await uploadFileToBucket(uploadBucket, MEDIA_FILE);
-    const mediaFileLocator = new S3Locator({url: "https://pt-rovers-mam-dev-media-eu-west-1.s3.eu-west-1.amazonaws.com/eu-west-1%3A6282b0ae-bbc6-47ae-b3f8-c9d42aa220b6/20220519T133327/Tom%20Hanks%27%20Amazing%20Clint%20Eastwood%20Impression%20-%20The%20Graham%20Norton%20Show.mp4?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEDEaCWV1LXdlc3QtMyJHMEUCIQDtIVqfzegM3oLvaF7M944Xz5l2Xc1KYaz4d8X58u137wIgQkYQ0IkbhkSsLRPo97HXV%2B9qM0NziWaLeDVq13kKKiEq%2BwIIGRACGgwwODM1MzQ0NTA0NjUiDDCdvMtGdkXPOH0PsyrYAmxb71wzyW0vsYqu4bZxWa5UTtytLe%2FLY2zpqksZW8L4vQWuefdHqnQmMQec%2Bbmw7wEvV7%2FiRcHtjI5OVpYHym2R2HDdCDpZ%2BIwPaThGbbwynU4A5v7zDGVKptWKH5upRICQjTVayzmjcmkv%2FiROBmMsmxetnFDTH52WgGUmP8oYxaBpDySHI1eN9G8ws%2BO5ao2ADVlJ8o41OyCKe3U2u8km0zLNJiHZYmCoKacpX1qQLN%2B3%2FrZm0aVqsMXpUE9TH6ad7KiTCXa6456inpYUdXyTlQEN%2BJVqpJ%2FgDBo3SYjOYMK5qLkilh6xUdszQjvlUgJcbIyz%2FGc9%2FonBdaH7fC%2FFbLqHZ5axVlojQZChffQJ6BobwcF0H4SeUy86baI0bEZXSHG%2FF4LVHETb%2BtGsYF6qI8LDHk%2BZ4yP0Po277bm7f6BTKj442pG1zdfOHdg4pyVFhCYP%2BxqmMI%2BAn5QGOrMCeIF6OVSa90ktxkjV8p2iTW6hStPtwlpCHq0BN0%2FlFyThshiErNXaahpJ2ARfnZghltW6ulkWn3VuX8Od56U%2F8dZfKsn7ZtivNR0k2T87q4cBdsBR0MSkeK4o%2Fjos80%2FlkQjcEqdt4fGbeSnu8BYGvWaiQYdmUffjDAlboFtPioB8oB84yeyHH9JIWTH8JBrwwZzTiJtGTFRGzePWvTEsgfVkwmu2jKAPwTM5ArSwt6W2lVWTDIIqfdV4Lwo79gpDiZT4BJ8vR8vbnltr2QbDw2VJdnEohPFm5FxQSg0erL1ZtuVTVHuuPrwA64wy2kBxhTr71Iz6OgJlX9sEguzIOGQbZY0XSz%2FlXBN41ci3B5hMRwJTE9bsfgghUuUEhdkI3RLeySQzOGKkY4u7yRgkJRcYEg%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20220520T202749Z&X-Amz-SignedHeaders=host&X-Amz-Expires=43200&X-Amz-Credential=ASIARG4YKR4QQ4NWGX3G%2F20220520%2Feu-west-1%2Fs3%2Faws4_request&X-Amz-Signature=e57d92be653d08527237e3fc1e814d1f019d1ce246f3e77f3ea65df2e01672c4" })
+    console.log(`Uploading media file ${MEDIA_FILE}`);
+    const mediaFileLocator = await uploadFileToBucket(uploadBucket, MEDIA_FILE);
 
     await testJob(resourceManager, mediaFileLocator);
 }

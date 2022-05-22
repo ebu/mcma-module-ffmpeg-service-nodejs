@@ -76,7 +76,6 @@ module "ffmpeg_service" {
   aws_region = var.aws_region
 
   service_registry = module.service_registry
-  job_processor    = module.job_processor
 
   log_group = aws_cloudwatch_log_group.main
 }

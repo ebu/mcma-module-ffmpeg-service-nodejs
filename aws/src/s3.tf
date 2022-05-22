@@ -61,7 +61,7 @@ resource "aws_s3_bucket" "output" {
 }
 
 resource "aws_s3_bucket_acl" "output" {
-  count  = var.output_bucket == null ? 1 : 0
+  count = var.output_bucket == null ? 1 : 0
 
   bucket = aws_s3_bucket.output[0].id
   acl    = "private"

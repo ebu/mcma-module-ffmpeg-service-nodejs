@@ -43,9 +43,9 @@ resource "aws_iam_role_policy" "worker" {
         Resource = "*"
       },
       {
-        Sid      = "WriteToCloudWatchLogs"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "WriteToCloudWatchLogs"
+        Effect = "Allow"
+        Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
@@ -58,9 +58,9 @@ resource "aws_iam_role_policy" "worker" {
         ] : [])
       },
       {
-        Sid      = "ListAndDescribeDynamoDBTables"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "ListAndDescribeDynamoDBTables"
+        Effect = "Allow"
+        Action = [
           "dynamodb:List*",
           "dynamodb:DescribeReservedCapacity*",
           "dynamodb:DescribeLimits",
@@ -69,9 +69,9 @@ resource "aws_iam_role_policy" "worker" {
         Resource = "*"
       },
       {
-        Sid      = "AllowTableOperations"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowTableOperations"
+        Effect = "Allow"
+        Action = [
           "dynamodb:BatchGetItem",
           "dynamodb:BatchWriteItem",
           "dynamodb:DeleteItem",
@@ -85,45 +85,45 @@ resource "aws_iam_role_policy" "worker" {
         Resource = aws_dynamodb_table.service_table.arn
       },
       {
-        Sid      = "AllowInvokingApiGateway"
-        Effect   = "Allow"
-        Action   = "execute-api:Invoke"
-        Resource = [
-          "${var.service_registry.aws_apigatewayv2_stage.service_api.execution_arn}/*/*",
-          "${var.job_processor.aws_apigatewayv2_stage.service_api.execution_arn}/*/*",
-        ]
-      },
-      {
         Sid      = "AllowWritingToOutputBucket"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject"]
         Resource = "${var.output_bucket != null ? var.output_bucket.arn : aws_s3_bucket.output[0].arn }/${var.output_bucket_prefix}*"
       },
     ],
-    var.xray_tracing_enabled ?
-    [
-      {
-        Sid      = "AllowLambdaWritingToXRay"
-        Effect   = "Allow"
-        Action   = [
-          "xray:PutTraceSegments",
-          "xray:PutTelemetryRecords",
-          "xray:GetSamplingRules",
-          "xray:GetSamplingTargets",
-          "xray:GetSamplingStatisticSummaries",
-        ]
-        Resource = "*"
-      }
-    ] : [],
-    var.dead_letter_config_target != null ?
-    [
-      {
-        Sid      = "AllowLambdaToSendToDLQ"
-        Effect   = "Allow"
-        Action   = "sqs:SendMessage"
-        Resource = var.dead_letter_config_target
-      }
-    ] : [])
+      var.xray_tracing_enabled ?
+      [
+        {
+          Sid    = "AllowLambdaWritingToXRay"
+          Effect = "Allow"
+          Action = [
+            "xray:PutTraceSegments",
+            "xray:PutTelemetryRecords",
+            "xray:GetSamplingRules",
+            "xray:GetSamplingTargets",
+            "xray:GetSamplingStatisticSummaries",
+          ]
+          Resource = "*"
+        }
+      ] : [],
+      var.dead_letter_config_target != null ?
+      [
+        {
+          Sid      = "AllowLambdaToSendToDLQ"
+          Effect   = "Allow"
+          Action   = "sqs:SendMessage"
+          Resource = var.dead_letter_config_target
+        }
+      ] : [],
+      length(var.execute_api_arns) > 0 ?
+      [
+        {
+          Sid      = "AllowInvokingApiGateway"
+          Effect   = "Allow"
+          Action   = "execute-api:Invoke"
+          Resource = var.execute_api_arns
+        },
+      ] : [])
   })
 }
 
@@ -145,7 +145,7 @@ resource "aws_lambda_function" "worker" {
   source_code_hash = filebase64sha256(local.worker_zip_file)
   runtime          = "nodejs14.x"
   timeout          = "900"
-  memory_size      = "2048"
+  memory_size      = "10240"
 
   layers = var.enhanced_monitoring_enabled ? [
     aws_lambda_layer_version.ffmpeg.arn,

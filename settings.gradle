@@ -4,4 +4,5 @@ include "aws",
         "deployment",
         "scripts",
         "scripts:publish",
-        "scripts:test-service"
+        "scripts:test-extract-thumbnail",
+        "scripts:test-transcode"

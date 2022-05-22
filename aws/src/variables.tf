@@ -30,12 +30,6 @@ variable "dead_letter_config_target" {
   default     = null
 }
 
-variable "output_use_deprecated_s3_locator" {
-  type        = bool
-  description = "Use old S3Locator instead of newer S3Locator as output type"
-  default     = false
-}
-
 #########################
 # Output bucket
 #########################
@@ -91,26 +85,16 @@ variable "iam_role_path" {
 
 variable "service_registry" {
   type = object({
-    auth_type              = string,
-    services_url           = string,
-    aws_apigatewayv2_stage = object({
-      service_api = object({
-        execution_arn = string
-      })
-    })
+    auth_type    = string
+    services_url = string
   })
 }
 
-variable "job_processor" {
-  type = object({
-    aws_apigatewayv2_stage = object({
-      service_api = object({
-        execution_arn = string
-      })
-    })
-  })
+variable "execute_api_arns" {
+  type        = list(string)
+  description = "Optional ist of api gateway execution arns that will allow you to control which APIs the lambdas are allowed to invoke"
+  default     = ["arn:aws:execute-api:*:*:*"]
 }
-
 
 #########################
 # Logging

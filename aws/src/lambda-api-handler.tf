@@ -4,7 +4,7 @@
 
 locals {
   lambda_name_api_handler = format("%.64s", replace("${var.prefix}-api-handler", "/[^a-zA-Z0-9_]+/", "-" ))
-  api_handler_zip_file = "${path.module}/lambdas/api-handler.zip"
+  api_handler_zip_file    = "${path.module}/lambdas/api-handler.zip"
 }
 
 resource "aws_iam_role" "api_handler" {
@@ -42,9 +42,9 @@ resource "aws_iam_role_policy" "api_handler" {
         Resource = "*"
       },
       {
-        Sid      = "WriteToCloudWatchLogs"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "WriteToCloudWatchLogs"
+        Effect = "Allow"
+        Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
@@ -57,9 +57,9 @@ resource "aws_iam_role_policy" "api_handler" {
         ] : [])
       },
       {
-        Sid      = "ListAndDescribeDynamoDBTables"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "ListAndDescribeDynamoDBTables"
+        Effect = "Allow"
+        Action = [
           "dynamodb:List*",
           "dynamodb:DescribeReservedCapacity*",
           "dynamodb:DescribeLimits",
@@ -68,9 +68,9 @@ resource "aws_iam_role_policy" "api_handler" {
         Resource = "*"
       },
       {
-        Sid      = "AllowTableOperations"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "AllowTableOperations"
+        Effect = "Allow"
+        Action = [
           "dynamodb:BatchGetItem",
           "dynamodb:BatchWriteItem",
           "dynamodb:DeleteItem",
@@ -90,30 +90,30 @@ resource "aws_iam_role_policy" "api_handler" {
         Resource = aws_lambda_function.worker.arn
       },
     ],
-    var.xray_tracing_enabled ?
-    [
-      {
-        Sid      = "AllowLambdaWritingToXRay"
-        Effect   = "Allow"
-        Action   = [
-          "xray:PutTraceSegments",
-          "xray:PutTelemetryRecords",
-          "xray:GetSamplingRules",
-          "xray:GetSamplingTargets",
-          "xray:GetSamplingStatisticSummaries",
-        ]
-        Resource = "*"
-      }
-    ] : [],
-    var.dead_letter_config_target != null ?
-    [
-      {
-        Sid      = "AllowLambdaToSendToDLQ"
-        Effect   = "Allow"
-        Action   = "sqs:SendMessage"
-        Resource = var.dead_letter_config_target
-      }
-    ] : [])
+      var.xray_tracing_enabled ?
+      [
+        {
+          Sid    = "AllowLambdaWritingToXRay"
+          Effect = "Allow"
+          Action = [
+            "xray:PutTraceSegments",
+            "xray:PutTelemetryRecords",
+            "xray:GetSamplingRules",
+            "xray:GetSamplingTargets",
+            "xray:GetSamplingStatisticSummaries",
+          ]
+          Resource = "*"
+        }
+      ] : [],
+      var.dead_letter_config_target != null ?
+      [
+        {
+          Sid      = "AllowLambdaToSendToDLQ"
+          Effect   = "Allow"
+          Action   = "sqs:SendMessage"
+          Resource = var.dead_letter_config_target
+        }
+      ] : [])
   })
 }
 
