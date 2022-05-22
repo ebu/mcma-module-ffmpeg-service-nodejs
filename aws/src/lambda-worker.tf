@@ -147,6 +147,10 @@ resource "aws_lambda_function" "worker" {
   timeout          = "900"
   memory_size      = "10240"
 
+  ephemeral_storage {
+    size = 10240
+  }
+
   layers = var.enhanced_monitoring_enabled ? [
     aws_lambda_layer_version.ffmpeg.arn,
     "arn:aws:lambda:${var.aws_region}:580247275435:layer:LambdaInsightsExtension:14"

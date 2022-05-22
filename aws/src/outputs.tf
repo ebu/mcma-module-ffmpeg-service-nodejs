@@ -40,7 +40,7 @@ output "service_definition" {
             parameter_type = "boolean"
           }
         ]
-        output_parameters         = [
+        output_parameters = [
           {
             parameter_name = "outputFile"
             parameter_type = "S3Locator"
@@ -73,6 +73,10 @@ output "service_definition" {
             parameter_type = "number"
           },
           {
+            parameter_name = "audioBitRate"
+            parameter_type = "number"
+          },
+          {
             parameter_name = "width"
             parameter_type = "number"
           },
@@ -89,7 +93,7 @@ output "service_definition" {
             parameter_type = "boolean"
           }
         ]
-        output_parameters         = [
+        output_parameters = [
           {
             parameter_name = "outputFile"
             parameter_type = "S3Locator"

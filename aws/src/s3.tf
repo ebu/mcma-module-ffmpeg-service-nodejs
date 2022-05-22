@@ -12,6 +12,23 @@ resource "aws_s3_bucket" "output" {
 
   force_destroy = true
 
+  lifecycle {
+    ignore_changes = [
+      grant,
+      lifecycle_rule,
+      logging,
+      server_side_encryption_configuration,
+      policy,
+    ]
+  }
+
+  tags = var.tags
+}
+
+resource "aws_s3_bucket_policy" "output" {
+  count = var.output_bucket == null ? 1 : 0
+
+  bucket = aws_s3_bucket.output[0].id
   policy = jsonencode({
     Version   = "2012-10-17"
     Statement = [
@@ -47,17 +64,6 @@ resource "aws_s3_bucket" "output" {
       }
     ]
   })
-
-  lifecycle {
-    ignore_changes = [
-      grant,
-      lifecycle_rule,
-      logging,
-      server_side_encryption_configuration,
-    ]
-  }
-
-  tags = var.tags
 }
 
 resource "aws_s3_bucket_acl" "output" {
