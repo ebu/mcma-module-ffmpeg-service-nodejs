@@ -8,7 +8,7 @@ import * as stream from "stream";
 import { v4 as uuidv4 } from "uuid";
 import * as AWS from "aws-sdk";
 
-import { AuthProvider, ResourceManager } from "@mcma/client";
+import { AuthProvider, ResourceManager, ResourceManagerConfig } from "@mcma/client";
 import { Job, JobParameterBag, JobProfile, JobStatus, McmaException, McmaTracker, TransformJob, Utils } from "@mcma/core";
 import { S3Locator } from "@mcma/aws-s3";
 import { awsV4Auth } from "@mcma/aws-client";
@@ -166,12 +166,10 @@ async function main() {
 
     const servicesUrl = terraformOutput.service_registry.value.services_url;
     const servicesAuthType = terraformOutput.service_registry.value.auth_type;
-    const servicesAuthContext: any | undefined = undefined;
 
-    const resourceManagerConfig = {
+    const resourceManagerConfig: ResourceManagerConfig = {
         servicesUrl,
         servicesAuthType,
-        servicesAuthContext
     };
 
     const resourceManager = new ResourceManager(resourceManagerConfig, new AuthProvider().add(awsV4Auth(AWS)));

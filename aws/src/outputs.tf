@@ -11,6 +11,27 @@ output "service_definition" {
     job_type     = "TransformJob"
     job_profiles = [
       {
+        name             = "FFmpegExtractAudio"
+        input_parameters = [
+          {
+            parameter_name = "inputFile"
+            parameter_type = "Locator"
+          },
+        ]
+        optional_input_parameters = [
+          {
+            parameter_name = "outputFormat"
+            parameter_type = "string"
+          },
+        ]
+        output_parameters = [
+          {
+            parameter_name = "outputFile"
+            parameter_type = "S3Locator"
+          }
+        ]
+      },
+      {
         name             = "FFmpegExtractThumbnail"
         input_parameters = [
           {

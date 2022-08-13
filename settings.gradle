@@ -4,5 +4,6 @@ include "aws",
         "deployment",
         "scripts",
         "scripts:publish",
+        "scripts:test-extract-audio",
         "scripts:test-extract-thumbnail",
         "scripts:test-transcode"

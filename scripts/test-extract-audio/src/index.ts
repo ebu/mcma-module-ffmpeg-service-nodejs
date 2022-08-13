@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as mime from "mime-types";
 
-import * as ffmpeg from "fluent-ffmpeg";
 import * as stream from "stream";
 
 import { v4 as uuidv4 } from "uuid";
@@ -81,32 +80,28 @@ async function waitForJobCompletion(job: Job, resourceManager: ResourceManager):
 
         await Utils.sleep(1000);
         job = await resourceManager.get<Job>(job.id);
-        console.log("Job is " + job.status);
+        console.log("Job is " + job.status + (job.progress ? " " + job.progress + "%" : ""));
     }
 
     return job;
 }
 
 async function startJob(resourceManager: ResourceManager, inputFile: S3Locator) {
-    let [jobProfile] = await resourceManager.query(JobProfile, { name: "FFmpegTranscode" });
+    let [jobProfile] = await resourceManager.query(JobProfile, { name: "FFmpegExtractAudio" });
 
     // if not found bail out
     if (!jobProfile) {
-        throw new McmaException("JobProfile 'FFmpegTranscode' not found");
+        throw new McmaException("JobProfile 'FFmpegExtractAudio' not found");
     }
 
     let job = new TransformJob({
         jobProfileId: jobProfile.id,
         jobInput: new JobParameterBag({
             inputFile,
-            videoBitRate: 500,
-            width: 640,
-            aspectRatio: "4:3",
-            autoPadding: true,
         }),
         tracker: new McmaTracker({
             "id": uuidv4(),
-            "label": "Test - FFmpegTranscode"
+            "label": "Test - FFmpegExtractAudio"
         })
     });
 
@@ -125,77 +120,7 @@ async function testJob(resourceManager: ResourceManager, inputFile: S3Locator) {
     console.log(JSON.stringify(job, null, 2));
 }
 
-function uploadFromStream(s3: AWS.S3, bucket: string, key: string, contentType?: string) {
-    const pass = new stream.PassThrough();
-
-    s3.upload({ Bucket: bucket, Key: key, Body: pass, ContentType: contentType }, function (err: Error, data: any) {
-        console.log(err, data);
-    });
-
-    return pass;
-}
-
-async function test() {
-    const terraformOutput = JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT, "utf8"));
-    const uploadBucket = terraformOutput.upload_bucket.value;
-
-    const uploadStream = uploadFromStream(s3, uploadBucket, "test.mp4", "video/mp4");
-
-    var stream  = fs.createWriteStream('outputfile.mp4');
-
-    ffmpeg("C:/Media/2015_GF_ORF_00_18_09_conv.mp4")
-        .audioCodec("aac")
-        .videoCodec("libx264")
-        .size("640x?")
-        .videoBitrate(500)
-        .outputFormat("mp4")
-        .outputOptions("-movflags empty_moov")
-        .output(stream)
-        .on("end", function () {
-            log("Finished");
-        })
-        .on("error", (err, stdout, stderr) => {
-            console.log('Cannot process video: ' + err.message);
-            console.log("stdout: " + stdout);
-            console.log("stderr: " + stderr);
-        })
-        .on('progress', function(progress) {
-            console.log('Processing: ' + progress.percent + '% done');
-        })
-        .run();
-}
-
-function capabilities() {
-    ffmpeg.getAvailableFormats(function(err, formats) {
-        console.log('Available formats:');
-        for (const key of Object.keys(formats)) {
-            if (!formats[key].canMux) {
-                delete formats[key];
-            }
-        }
-        console.dir(formats);
-    });
-return;
-    ffmpeg.getAvailableCodecs(function(err, codecs) {
-        console.log('Available codecs:');
-        console.dir(codecs);
-    });
-
-    ffmpeg.getAvailableEncoders(function(err, encoders) {
-        console.log('Available encoders:');
-        console.dir(encoders);
-    });
-
-    ffmpeg.getAvailableFilters(function(err, filters) {
-        console.log("Available filters:");
-        console.dir(filters);
-    });
-}
-
 async function main() {
-    // capabilities();
-    // return;
-
     // await test();
     // return;
 

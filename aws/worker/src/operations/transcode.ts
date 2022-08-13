@@ -1,4 +1,4 @@
-import { S3Locator, S3LocatorProperties } from "@mcma/aws-s3";
+import { S3Locator } from "@mcma/aws-s3";
 import { S3 } from "aws-sdk";
 import * as ffmpeg from "fluent-ffmpeg";
 import * as fs from "fs";
@@ -11,7 +11,7 @@ import { generateFilePrefix } from "./utils";
 
 const { OutputBucket } = process.env;
 
-async function ffmpegTranscode(params: { [key: string]: any }, inputFile: S3LocatorProperties, outputFile: string, logger: Logger) {
+async function ffmpegTranscode(params: { [key: string]: any }, inputFile: S3Locator, outputFile: string, logger: Logger) {
     return new Promise<void>(((resolve, reject) => {
 
         const videoCodec = params["videoCodec"] ?? "libx264";
@@ -69,7 +69,7 @@ export async function transcode(providers: ProviderCollection, jobAssignmentHelp
     const jobInput = jobAssignmentHelper.jobInput;
 
     logger.info("Execute ffmpeg on input file");
-    let inputFile = jobInput.get<S3LocatorProperties>("inputFile");
+    let inputFile = jobInput.inputFile as S3Locator;
 
     if (!inputFile.url) {
         throw new McmaException("Not able to obtain input file");
@@ -99,7 +99,7 @@ export async function transcode(providers: ProviderCollection, jobAssignmentHelp
             ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
         }).promise();
 
-        jobAssignmentHelper.jobOutput.set("outputFile", outputFile);
+        jobAssignmentHelper.jobOutput.outputFile = outputFile;
 
         logger.info("Marking JobAssignment as completed");
         await jobAssignmentHelper.complete();
