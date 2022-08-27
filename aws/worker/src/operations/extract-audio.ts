@@ -1,5 +1,5 @@
 import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
-import { McmaException, TransformJob } from "@mcma/core";
+import { Locator, McmaException, TransformJob } from "@mcma/core";
 import { S3 } from "aws-sdk";
 import { S3Locator } from "@mcma/aws-s3";
 import { generateFilePrefix } from "./utils";
@@ -9,7 +9,7 @@ import * as ffmpeg from "fluent-ffmpeg";
 
 const { OutputBucket } = process.env;
 
-async function ffmpegExtractAudio(outputFormat: string, inputFile: S3Locator, outputFile: S3Locator, s3: S3) {
+async function ffmpegExtractAudio(params: { [key: string]: any }, inputFile: Locator, outputFile: S3Locator, s3: S3) {
     return new Promise<S3.ManagedUpload.SendData>(((resolve, reject) => {
         const writableStream = new stream.PassThrough();
 
@@ -28,7 +28,11 @@ async function ffmpegExtractAudio(outputFormat: string, inputFile: S3Locator, ou
         let pipeline = ffmpeg(inputFile.url)
             .setFfmpegPath("/opt/ffmpeg");
 
-        pipeline.outputFormat(outputFormat)
+        if (params.audioCodec) {
+            pipeline.audioCodec(params.audioCodec);
+        }
+
+        pipeline.outputFormat(params.outputFormat)
             .output(writableStream)
             .on("error", function (err, stdout, stderr) {
                 reject(err);
@@ -44,7 +48,7 @@ export async function extractAudio(providers: ProviderCollection, jobAssignmentH
     logger.info("Execute ffmpeg on input file");
     const inputFile = jobInput.inputFile as S3Locator;
 
-    const outputFormat = jobInput.outputFormat as string ?? "flac";
+    jobInput.outputFormat = jobInput.outputFormat as string ?? "flac";
 
     if (!inputFile.url) {
         throw new McmaException("Not able to obtain input file");
@@ -53,12 +57,12 @@ export async function extractAudio(providers: ProviderCollection, jobAssignmentH
     const outputFile = new S3Locator({
         url: ctx.s3.getSignedUrl("getObject", {
             Bucket: OutputBucket,
-            Key: generateFilePrefix(inputFile.url) + "." + outputFormat,
+            Key: generateFilePrefix(inputFile.url) + "." + jobInput.outputFormat,
             Expires: 12 * 3600
         })
     });
 
-    const data = await ffmpegExtractAudio(outputFormat, inputFile, outputFile, ctx.s3);
+    const data = await ffmpegExtractAudio(jobInput, inputFile, outputFile, ctx.s3);
     logger.info(data);
 
     jobAssignmentHelper.jobOutput.outputFile = outputFile;

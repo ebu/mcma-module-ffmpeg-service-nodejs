@@ -2,8 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as mime from "mime-types";
 
-import * as stream from "stream";
-
 import { v4 as uuidv4 } from "uuid";
 import * as AWS from "aws-sdk";
 
@@ -98,6 +96,8 @@ async function startJob(resourceManager: ResourceManager, inputFile: S3Locator) 
         jobProfileId: jobProfile.id,
         jobInput: new JobParameterBag({
             inputFile,
+            // audioCodec: "pcm_s16le",
+            // outputFormat: "wav"
         }),
         tracker: new McmaTracker({
             "id": uuidv4(),
