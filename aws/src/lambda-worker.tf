@@ -20,11 +20,13 @@ resource "aws_iam_role" "worker" {
         Effect    = "Allow"
         Action    = "sts:AssumeRole"
         Principal = {
-          "Service" = "lambda.amazonaws.com"
+          Service = "lambda.amazonaws.com"
         }
       }
     ]
   })
+
+  permissions_boundary = var.iam_permissions_boundary
 
   tags = var.tags
 }
@@ -143,7 +145,7 @@ resource "aws_lambda_function" "worker" {
   handler          = "index.handler"
   filename         = local.worker_zip_file
   source_code_hash = filebase64sha256(local.worker_zip_file)
-  runtime          = "nodejs14.x"
+  runtime          = "nodejs16.x"
   timeout          = "900"
   memory_size      = "10240"
 
@@ -151,20 +153,20 @@ resource "aws_lambda_function" "worker" {
     size = 10240
   }
 
-  layers = var.enhanced_monitoring_enabled ? [
+  layers = var.enhanced_monitoring_enabled && contains(keys(local.lambda_insights_extensions), var.aws_region) ? [
     aws_lambda_layer_version.ffmpeg.arn,
-    "arn:aws:lambda:${var.aws_region}:580247275435:layer:LambdaInsightsExtension:14"
+    local.lambda_insights_extensions[var.aws_region]
   ] : [aws_lambda_layer_version.ffmpeg.arn]
 
   environment {
     variables = {
-      LogGroupName       = var.log_group.name
-      TableName          = aws_dynamodb_table.service_table.name
-      PublicUrl          = local.service_url
-      ServicesUrl        = var.service_registry.services_url
-      ServicesAuthType   = var.service_registry.auth_type
-      OutputBucket       = var.output_bucket != null ? var.output_bucket.id : aws_s3_bucket.output[0].id
-      OutputBucketPrefix = var.output_bucket_prefix
+      MCMA_LOG_GROUP_NAME             = var.log_group.name
+      MCMA_TABLE_NAME                 = aws_dynamodb_table.service_table.name
+      MCMA_PUBLIC_URL                 = local.service_url
+      MCMA_SERVICE_REGISTRY_URL       = var.service_registry.service_url
+      MCMA_SERVICE_REGISTRY_AUTH_TYPE = var.service_registry.auth_type
+      OUTPUT_BUCKET                   = var.output_bucket != null ? var.output_bucket.id : aws_s3_bucket.output[0].id
+      OUTPUT_BUCKET_PREFIX            = var.output_bucket_prefix
     }
   }
 

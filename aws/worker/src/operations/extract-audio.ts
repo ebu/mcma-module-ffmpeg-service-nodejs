@@ -7,7 +7,7 @@ import * as stream from "stream";
 import * as mime from "mime-types";
 import * as ffmpeg from "fluent-ffmpeg";
 
-const { OutputBucket } = process.env;
+const { OUTPUT_BUCKET } = process.env;
 
 async function ffmpegExtractAudio(params: { [key: string]: any }, inputFile: Locator, outputFile: S3Locator, s3: S3) {
     return new Promise<S3.ManagedUpload.SendData>(((resolve, reject) => {
@@ -56,7 +56,7 @@ export async function extractAudio(providers: ProviderCollection, jobAssignmentH
 
     const outputFile = new S3Locator({
         url: ctx.s3.getSignedUrl("getObject", {
-            Bucket: OutputBucket,
+            Bucket: OUTPUT_BUCKET,
             Key: generateFilePrefix(inputFile.url) + "." + jobInput.outputFormat,
             Expires: 12 * 3600
         })

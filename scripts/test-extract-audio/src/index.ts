@@ -129,12 +129,12 @@ async function main() {
     const terraformOutput = JSON.parse(fs.readFileSync(TERRAFORM_OUTPUT, "utf8"));
     const uploadBucket = terraformOutput.upload_bucket.value;
 
-    const servicesUrl = terraformOutput.service_registry.value.services_url;
-    const servicesAuthType = terraformOutput.service_registry.value.auth_type;
+    const serviceRegistryUrl = terraformOutput.service_registry.value.service_url;
+    const serviceRegistryAuthType = terraformOutput.service_registry.value.auth_type;
 
     const resourceManagerConfig: ResourceManagerConfig = {
-        servicesUrl,
-        servicesAuthType,
+        serviceRegistryUrl,
+        serviceRegistryAuthType,
     };
 
     const resourceManager = new ResourceManager(resourceManagerConfig, new AuthProvider().add(awsV4Auth(AWS)));

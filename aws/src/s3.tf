@@ -18,7 +18,6 @@ resource "aws_s3_bucket" "output" {
       lifecycle_rule,
       logging,
       server_side_encryption_configuration,
-      policy,
     ]
   }
 
@@ -33,13 +32,13 @@ resource "aws_s3_bucket_policy" "output" {
     Version   = "2012-10-17"
     Statement = [
       {
-        Sid       = "DenyHttpRequests",
+        Sid       = "DenyHttpRequests"
         Effect    = "Deny"
         Principal = "*"
         Action    = "s3:*"
         Resource  = [
           "arn:aws:s3:::${local.bucket_name_output}",
-          "arn:aws:s3:::${local.bucket_name_output}/*"
+          "arn:aws:s3:::${local.bucket_name_output}/*",
         ]
         Condition = {
           Bool = {
@@ -48,14 +47,14 @@ resource "aws_s3_bucket_policy" "output" {
         }
       },
       {
-        Sid       = "DenyDeprecatedTlsRequests",
-        Effect    = "Deny",
-        Principal = "*",
-        Action    = "s3:*",
+        Sid       = "DenyDeprecatedTlsRequests"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
         Resource  = [
           "arn:aws:s3:::${local.bucket_name_output}",
-          "arn:aws:s3:::${local.bucket_name_output}/*"
-        ],
+          "arn:aws:s3:::${local.bucket_name_output}/*",
+        ]
         Condition = {
           NumericLessThan = {
             "s3:TlsVersion" = "1.2"

@@ -1,4 +1,4 @@
-const { OutputBucketPrefix } = process.env;
+const { OUTPUT_BUCKET_PREFIX } = process.env;
 
 export function generateFilePrefix(url: string) {
     let filename = decodeURIComponent(new URL(url).pathname);
@@ -11,5 +11,5 @@ export function generateFilePrefix(url: string) {
         filename = filename.substring(0, pos);
     }
 
-    return `${OutputBucketPrefix}${new Date().toISOString().substring(0, 19).replace(/[:]/g, "-")}/${filename}`;
+    return `${OUTPUT_BUCKET_PREFIX}${new Date().toISOString().substring(0, 19).replace(/[:]/g, "-")}/${filename}`;
 }

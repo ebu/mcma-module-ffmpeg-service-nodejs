@@ -8,7 +8,7 @@ import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
 import { S3Locator } from "@mcma/aws-s3";
 import { generateFilePrefix } from "./utils";
 
-const { OutputBucket } = process.env;
+const { OUTPUT_BUCKET } = process.env;
 
 async function ffmpegExtractThumbnail(params: { [key: string]: any }, inputFile: S3Locator, outputFile: S3Locator, s3: S3) {
     return new Promise<S3.ManagedUpload.SendData>(((resolve, reject) => {
@@ -64,7 +64,7 @@ export async function extractThumbnail(providers: ProviderCollection, jobAssignm
 
     const outputFile = new S3Locator({
         url: ctx.s3.getSignedUrl("getObject", {
-            Bucket: OutputBucket,
+            Bucket: OUTPUT_BUCKET,
             Key: generateFilePrefix(inputFile.url) + ".jpg",
             Expires: 12 * 3600
         })

@@ -9,7 +9,7 @@ import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
 import { Logger, McmaException, TransformJob } from "@mcma/core";
 import { generateFilePrefix } from "./utils";
 
-const { OutputBucket } = process.env;
+const { OUTPUT_BUCKET } = process.env;
 
 async function ffmpegTranscode(params: { [key: string]: any }, inputFile: S3Locator, outputFile: string, logger: Logger) {
     return new Promise<void>(((resolve, reject) => {
@@ -85,7 +85,7 @@ export async function transcode(providers: ProviderCollection, jobAssignmentHelp
 
         const outputFile = new S3Locator({
             url: ctx.s3.getSignedUrl("getObject", {
-                Bucket: OutputBucket,
+                Bucket: OUTPUT_BUCKET,
                 Key: generateFilePrefix(inputFile.url) + "." + format,
                 Expires: 12 * 3600
             })

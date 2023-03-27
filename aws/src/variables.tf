@@ -79,20 +79,26 @@ variable "iam_role_path" {
   default     = "/"
 }
 
+variable "iam_permissions_boundary" {
+  type        = string
+  description = "IAM permissions boundary"
+  default     = null
+}
+
 #########################
 # Dependencies
 #########################
 
 variable "service_registry" {
   type = object({
-    auth_type    = string
-    services_url = string
+    auth_type   = string
+    service_url = string
   })
 }
 
 variable "execute_api_arns" {
   type        = list(string)
-  description = "Optional ist of api gateway execution arns that will allow you to control which APIs the lambdas are allowed to invoke"
+  description = "Optional list of api gateway execution arns that will allow you to control which APIs the lambdas are allowed to invoke"
   default     = ["arn:aws:execute-api:*:*:*"]
 }
 

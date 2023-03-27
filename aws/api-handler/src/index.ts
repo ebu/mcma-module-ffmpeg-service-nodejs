@@ -29,7 +29,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context) {
 
         return await restController.handleRequest(event, context);
     } catch (error) {
-        logger.error(error?.valueOf());
+        logger.error(error);
         throw error;
     } finally {
         logger.functionEnd(context.awsRequestId);
