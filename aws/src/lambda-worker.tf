@@ -145,7 +145,7 @@ resource "aws_lambda_function" "worker" {
   handler          = "index.handler"
   filename         = local.worker_zip_file
   source_code_hash = filebase64sha256(local.worker_zip_file)
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs18.x"
   timeout          = "900"
   memory_size      = "10240"
 

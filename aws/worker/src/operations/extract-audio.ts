@@ -1,29 +1,30 @@
 import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
 import { Locator, McmaException, TransformJob } from "@mcma/core";
-import { S3 } from "aws-sdk";
+import { AbortMultipartUploadCommandOutput, CompleteMultipartUploadCommandOutput, GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+
 import { S3Locator } from "@mcma/aws-s3";
 import { generateFilePrefix } from "./utils";
 import * as stream from "stream";
 import * as mime from "mime-types";
 import * as ffmpeg from "fluent-ffmpeg";
+import { Upload } from "@aws-sdk/lib-storage";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const { OUTPUT_BUCKET } = process.env;
 
-async function ffmpegExtractAudio(params: { [key: string]: any }, inputFile: Locator, outputFile: S3Locator, s3: S3) {
-    return new Promise<S3.ManagedUpload.SendData>(((resolve, reject) => {
+async function ffmpegExtractAudio(params: { [key: string]: any }, inputFile: Locator, outputFile: S3Locator, s3Client: S3Client) {
+    return new Promise<AbortMultipartUploadCommandOutput | CompleteMultipartUploadCommandOutput>(((resolve, reject) => {
         const writableStream = new stream.PassThrough();
 
-        s3.upload({
-            Bucket: outputFile.bucket,
-            Key: outputFile.key,
-            Body: writableStream,
-            ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
-        }, function (err: Error, data: S3.ManagedUpload.SendData) {
-            if (err) {
-                return reject(err);
+        new Upload({
+            client: s3Client,
+            params: {
+                Bucket: outputFile.bucket,
+                Key: outputFile.key,
+                Body: writableStream,
+                ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
             }
-            return resolve(data);
-        });
+        }).done().then(r => resolve(r)).catch(e => reject(e));
 
         let pipeline = ffmpeg(inputFile.url)
             .setFfmpegPath("/opt/ffmpeg");
@@ -41,7 +42,7 @@ async function ffmpegExtractAudio(params: { [key: string]: any }, inputFile: Loc
     }));
 }
 
-export async function extractAudio(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3: S3 }) {
+export async function extractAudio(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3Client: S3Client }) {
     const logger = jobAssignmentHelper.logger;
     const jobInput = jobAssignmentHelper.jobInput;
 
@@ -55,14 +56,17 @@ export async function extractAudio(providers: ProviderCollection, jobAssignmentH
     }
 
     const outputFile = new S3Locator({
-        url: ctx.s3.getSignedUrl("getObject", {
-            Bucket: OUTPUT_BUCKET,
-            Key: generateFilePrefix(inputFile.url) + "." + jobInput.outputFormat,
-            Expires: 12 * 3600
-        })
+        url: await getSignedUrl(
+            ctx.s3Client,
+            new GetObjectCommand({
+                Bucket: OUTPUT_BUCKET,
+                Key: generateFilePrefix(inputFile.url) + "." + jobInput.outputFormat,
+            }),
+            { expiresIn: 12 * 3600 }
+        )
     });
 
-    const data = await ffmpegExtractAudio(jobInput, inputFile, outputFile, ctx.s3);
+    const data = await ffmpegExtractAudio(jobInput, inputFile, outputFile, ctx.s3Client);
     logger.info(data);
 
     jobAssignmentHelper.jobOutput.outputFile = outputFile;

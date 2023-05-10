@@ -29,7 +29,7 @@ resource "aws_cloudwatch_log_group" "main" {
 #########################
 
 module "service_registry" {
-  source = "https://ch-ebu-mcma-module-repository.s3.eu-central-1.amazonaws.com/ebu/service-registry/aws/0.15.0/module.zip"
+  source = "https://ch-ebu-mcma-module-repository.s3.eu-central-1.amazonaws.com/ebu/service-registry/aws/0.16.0/module.zip"
 
   prefix = "${var.global_prefix}-service-registry"
 
@@ -49,7 +49,7 @@ module "service_registry" {
 #########################
 
 module "job_processor" {
-  source = "https://ch-ebu-mcma-module-repository.s3.eu-central-1.amazonaws.com/ebu/job-processor/aws/0.15.0/module.zip"
+  source = "https://ch-ebu-mcma-module-repository.s3.eu-central-1.amazonaws.com/ebu/job-processor/aws/0.16.0/module.zip"
 
   prefix = "${var.global_prefix}-job-processor"
 

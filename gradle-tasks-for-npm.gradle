@@ -1,7 +1,7 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
-def McmaVersion = "0.15.0-beta2"
+def McmaVersion = "0.16.0"
 
 task setMcmaVersion {
     def packageJson = file("package.json")
@@ -117,5 +117,30 @@ task tsc(type: Exec) {
 task clean(type: Delete) {
     delete "build"
     delete "node_modules"
+}
+
+task cleanPackageLocks(type: Delete) {
+    delete "package-lock.json"
+}
+
+task npmAudit(type: Exec) {
+    dependsOn ":verifyNodeJS"
+    inputs.file("package.json")
+    commandLine npmExecutable
+    args "audit"
+}
+
+task npmAuditFix(type: Exec) {
+    dependsOn ":verifyNodeJS"
+    inputs.file("package.json")
+    commandLine npmExecutable
+    args "audit", "fix"
+}
+
+task npmForceAuditFix(type: Exec) {
+    dependsOn ":verifyNodeJS"
+    inputs.file("package.json")
+    commandLine npmExecutable
+    args "audit", "fix", "--force"
 }
 

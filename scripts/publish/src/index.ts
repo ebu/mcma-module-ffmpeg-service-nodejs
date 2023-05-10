@@ -1,15 +1,11 @@
 import * as fs from "fs";
-import * as AWS from "aws-sdk";
 import { McmaException } from "@mcma/core";
+import { GetBucketLocationCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { fromIni } from "@aws-sdk/credential-providers";
 
 const { MODULE_NAMESPACE, MODULE_NAME, MODULE_VERSION, MODULE_REPOSITORY } = process.env;
 
-const { AwsProfile, AwsRegion } = process.env;
-
-AWS.config.credentials = new AWS.SharedIniFileCredentials({ profile: AwsProfile });
-AWS.config.region = AwsRegion;
-
-const s3 = new AWS.S3();
+let s3Client = new S3Client({ credentials: fromIni() });
 
 async function main() {
     console.log("Publishing to Module Repository");
@@ -20,13 +16,19 @@ async function main() {
 
     const objectKey = `${MODULE_NAMESPACE}/${MODULE_NAME}/aws/${MODULE_VERSION}/module.zip`;
 
+    const locationCommandOutput = await s3Client.send(new GetBucketLocationCommand({ Bucket: MODULE_REPOSITORY }));
+    s3Client = new S3Client({
+        credentials: fromIni(),
+        region: locationCommandOutput.LocationConstraint ?? "us-east-1"
+    });
+
     console.log("Checking if version already exists");
     let exists = true;
     try {
-        await s3.headObject({
+        await s3Client.send(new HeadObjectCommand({
             Bucket: MODULE_REPOSITORY,
             Key: objectKey
-        }).promise();
+        }));
     } catch {
         exists = false;
     }
@@ -36,19 +38,19 @@ async function main() {
 
     console.log("Uploading AWS version");
     try {
-        await s3.upload({
+        await s3Client.send(new PutObjectCommand({
             Bucket: MODULE_REPOSITORY,
             Key: objectKey,
             Body: fs.createReadStream("../../aws/build/dist/module.zip"),
             ACL: "public-read"
-        }).promise();
+        }));
     } catch (error) {
         // in case of a private bucket with restrictions we just try again without public-read ACL
-        await s3.upload({
+        await s3Client.send(new PutObjectCommand({
             Bucket: MODULE_REPOSITORY,
             Key: objectKey,
-            Body: fs.createReadStream("../../aws/build/dist/module.zip")
-        }).promise();
+            Body: fs.createReadStream("../../aws/build/dist/module.zip"),
+        }));
     }
 }
 

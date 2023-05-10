@@ -1,5 +1,5 @@
 def requiredVersionTerraform = "^1.1.2"
-def requiredVersionNodeJS = "^16.0.0"
+def requiredVersionNodeJS = "^18.0.0"
 def requiredVersionTsc = "^4.3.5"
 
 buildscript {

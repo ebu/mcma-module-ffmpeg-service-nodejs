@@ -1,5 +1,8 @@
 import { S3Locator } from "@mcma/aws-s3";
-import { S3 } from "aws-sdk";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from "@aws-sdk/lib-storage";
+
 import * as ffmpeg from "fluent-ffmpeg";
 import * as fs from "fs";
 import * as mime from "mime-types";
@@ -64,7 +67,7 @@ async function ffmpegTranscode(params: { [key: string]: any }, inputFile: S3Loca
     }));
 }
 
-export async function transcode(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3: S3 }) {
+export async function transcode(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3Client: S3Client }) {
     const logger = jobAssignmentHelper.logger;
     const jobInput = jobAssignmentHelper.jobInput;
 
@@ -84,20 +87,26 @@ export async function transcode(providers: ProviderCollection, jobAssignmentHelp
         await ffmpegTranscode(jobInput, inputFile, tempFile, logger);
 
         const outputFile = new S3Locator({
-            url: ctx.s3.getSignedUrl("getObject", {
-                Bucket: OUTPUT_BUCKET,
-                Key: generateFilePrefix(inputFile.url) + "." + format,
-                Expires: 12 * 3600
-            })
+            url: await getSignedUrl(
+                ctx.s3Client,
+                new GetObjectCommand({
+                    Bucket: OUTPUT_BUCKET,
+                    Key: generateFilePrefix(inputFile.url) + "." + format,
+                }),
+                { expiresIn: 12 * 3600 }
+            )
         });
 
         logger.info(`Begin uploading ${tempFile} to bucket '${outputFile.bucket}' with key '${outputFile.key}'`);
-        await ctx.s3.upload({
-            Bucket: outputFile.bucket,
-            Key: outputFile.key,
-            Body: fs.createReadStream(tempFile),
-            ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
-        }).promise();
+        await new Upload({
+            client: ctx.s3Client,
+            params: {
+                Bucket: outputFile.bucket,
+                Key: outputFile.key,
+                Body: fs.createReadStream(tempFile),
+                ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
+            }
+        }).done();
 
         jobAssignmentHelper.jobOutput.outputFile = outputFile;
 

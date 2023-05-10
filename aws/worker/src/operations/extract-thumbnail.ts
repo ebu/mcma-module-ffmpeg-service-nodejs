@@ -1,7 +1,9 @@
 import * as ffmpeg from "fluent-ffmpeg";
 import * as stream from "stream";
 import * as mime from "mime-types";
-import { S3 } from "aws-sdk";
+import { S3Client, GetObjectCommand, CompleteMultipartUploadCommandOutput, AbortMultipartUploadCommandOutput } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from "@aws-sdk/lib-storage";
 
 import { McmaException, TransformJob } from "@mcma/core";
 import { ProcessJobAssignmentHelper, ProviderCollection } from "@mcma/worker";
@@ -10,22 +12,20 @@ import { generateFilePrefix } from "./utils";
 
 const { OUTPUT_BUCKET } = process.env;
 
-async function ffmpegExtractThumbnail(params: { [key: string]: any }, inputFile: S3Locator, outputFile: S3Locator, s3: S3) {
-    return new Promise<S3.ManagedUpload.SendData>(((resolve, reject) => {
+async function ffmpegExtractThumbnail(params: { [key: string]: any }, inputFile: S3Locator, outputFile: S3Locator, s3Client: S3Client) {
+    return new Promise<AbortMultipartUploadCommandOutput | CompleteMultipartUploadCommandOutput>(((resolve, reject) => {
 
         const writableStream = new stream.PassThrough();
 
-        s3.upload({
-            Bucket: outputFile.bucket,
-            Key: outputFile.key,
-            Body: writableStream,
-            ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
-        }, function (err: Error, data: S3.ManagedUpload.SendData) {
-            if (err) {
-                return reject(err);
+        new Upload({
+            client: s3Client,
+            params: {
+                Bucket: outputFile.bucket,
+                Key: outputFile.key,
+                Body: writableStream,
+                ContentType: mime.lookup(outputFile.key) || "application/octet-stream"
             }
-            return resolve(data);
-        });
+        }).done().then(r => resolve(r)).catch(e => reject(e));
 
         let pipeline = ffmpeg(inputFile.url)
             .setFfmpegPath("/opt/ffmpeg")
@@ -51,7 +51,7 @@ async function ffmpegExtractThumbnail(params: { [key: string]: any }, inputFile:
     }));
 }
 
-export async function extractThumbnail(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3: S3 }) {
+export async function extractThumbnail(providers: ProviderCollection, jobAssignmentHelper: ProcessJobAssignmentHelper<TransformJob>, ctx: { s3Client: S3Client }) {
     const logger = jobAssignmentHelper.logger;
     const jobInput = jobAssignmentHelper.jobInput;
 
@@ -63,14 +63,17 @@ export async function extractThumbnail(providers: ProviderCollection, jobAssignm
     }
 
     const outputFile = new S3Locator({
-        url: ctx.s3.getSignedUrl("getObject", {
-            Bucket: OUTPUT_BUCKET,
-            Key: generateFilePrefix(inputFile.url) + ".jpg",
-            Expires: 12 * 3600
-        })
+        url: await getSignedUrl(
+            ctx.s3Client,
+            new GetObjectCommand({
+                Bucket: OUTPUT_BUCKET,
+                Key: generateFilePrefix(inputFile.url) + ".jpg",
+            }),
+            { expiresIn: 12 * 3600 }
+        )
     });
 
-    const data = await ffmpegExtractThumbnail(jobInput, inputFile, outputFile, ctx.s3);
+    const data = await ffmpegExtractThumbnail(jobInput, inputFile, outputFile, ctx.s3Client);
     logger.info(data);
 
     jobAssignmentHelper.jobOutput.outputFile = outputFile;
